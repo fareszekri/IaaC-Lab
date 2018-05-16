@@ -84,7 +84,7 @@
             "sku": {
                 "Tier": "Standard",
                 "Name": "S1"
-            } 
+            }
         },
         {
             "apiVersion": "2016-08-01",
@@ -145,6 +145,19 @@
                         "appSettingNames": [
                             "keys:ApplicationInsights:InstrumentationKey"
                         ]
+                    }
+                },
+                {
+                    "apiVersion": "2015-08-01",
+                    "name": "web",
+                    "type": "config",
+                    "dependsOn": [
+                        "[concat('Microsoft.Web/sites/', parameters('siteName'))]"
+                    ],
+                    "properties": {
+                        "javaVersion": "1.8",
+                        "javaContainer": "TOMCAT",
+                        "javaContainerVersion": "9.0"
                     }
                 },
                 {
