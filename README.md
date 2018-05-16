@@ -22,9 +22,15 @@ az account set -s <YOUR_SUBSCRIPTION_ID>
     # Create a ResourceGroup where : 
     az group create -n DevOps -l westeurop
     # create an Azure vault to store your secrets :
+<<<<<<< HEAD
     az keyvault create -n <Your_VAULT_NAME>-g DevOps -l westeurope --enabled-for-deployment true  --enabled-for-template-deployment true
     # Create your ssh_key secret :
     az keyvault secret set -n sshkey --vault-name <Your_VAULT_NAME>--value "$(cat ~/.ssh/id_rsa.pub)"
+=======
+    az keyvault create -n IaaCvault -g DevOps -l westeurope --enabled-for-deployment true  --enabled-for-template-deployment true
+    # Create your ssh_key secret :
+    az keyvault secret set -n sshkey --vault-name IaaCvault --value "$(cat ~/.ssh/id_rsa.pub)"
+>>>>>>> 7d7720eaaa951721fb92222dfee9e726c28a854b
 ```
 4. Create a new Project and import the following  Github repo : https://github.com/fareszekri/IaaC-Lab.git
 
