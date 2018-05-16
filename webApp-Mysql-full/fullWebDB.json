@@ -56,6 +56,22 @@
     },
     "resources": [
         {
+            "name": "[concat(parameters('siteName'), '-Insights', variables('env')[copyIndex('appinsightscopy')])]",
+            "type": "Microsoft.Insights/components",
+            "location": "eastus",
+            "apiVersion": "2014-04-01",
+            "tags": {
+                "displayName": "insightsComponents"
+            },
+            "properties": {
+                "ApplicationId": "[concat(parameters('siteName'), '-Insights', variables('env')[copyIndex('appinsightscopy')])]"
+            },
+            "copy": {
+                "name": "appinsightscopy",
+                "count": "[length(variables('env'))]"
+            }
+        },
+        {
             "apiVersion": "2016-09-01",
             "name": "[variables('hostingPlanName')]",
             "type": "Microsoft.Web/serverfarms",
@@ -63,14 +79,12 @@
             "properties": {
                 "name": "[variables('hostingPlanName')]",
                 "workerSizeId": "1",
-                "reserved": true,
-                "numberOfWorkers": 0,
-                "hostingEnvironment": ""
+                "numberOfWorkers": 1
             },
             "sku": {
                 "Tier": "Standard",
                 "Name": "S1"
-            }
+            } 
         },
         {
             "apiVersion": "2016-08-01",
@@ -78,7 +92,13 @@
             "type": "Microsoft.Web/sites",
             "location": "[parameters('location')]",
             "dependsOn": [
-                "[concat('Microsoft.Web/serverfarms/', variables('hostingPlanName'))]"
+                "[concat('Microsoft.Web/serverfarms/', variables('hostingPlanName'))]",
+                "[resourceId('Microsoft.DBforMySQL/servers', concat(parameters('serverName'),'-dev'))]",
+                "[resourceId('Microsoft.DBforMySQL/servers', concat(parameters('serverName'),'-staging'))]",
+                "[resourceId('Microsoft.DBforMySQL/servers', concat(parameters('serverName'),'-prod'))]",
+                "[resourceId('Microsoft.Insights/components', concat(parameters('siteName'), '-Insightsprod'))]",
+                "[resourceId('Microsoft.Insights/components', concat(parameters('siteName'), '-Insightsdev'))]",
+                "[resourceId('Microsoft.Insights/components', concat(parameters('siteName'), '-Insightsstaging'))]"
             ],
             "properties": {
                 "name": "[parameters('siteName')]",
@@ -95,10 +115,111 @@
                     ],
                     "properties": {
                         "defaultConnection": {
-                            "value": "[concat('Database=', variables('dbname'), ';Data Source=', parameters('serverName'), '.mysql.database.azure.com;User Id=', parameters('administratorLogin'),'@', parameters('serverName'),';Password=', parameters('administratorLoginPassword'))]",
+                            "value": "[concat('Database=', variables('dbname'), '-prod', ';Data Source=', parameters('serverName'), '.mysql.database.azure.com;User Id=', parameters('administratorLogin'),'@', parameters('serverName'),';Password=', parameters('administratorLoginPassword'))]",
                             "type": "MySql"
                         }
                     }
+                },
+                {
+                    "name": "appsettings",
+                    "type": "config",
+                    "apiVersion": "2014-11-01",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Web/sites', parameters('siteName'))]"
+                    ],
+                    "properties": {
+                        "Keys:ApplicationInsights:InstrumentationKey": "[reference(concat('Microsoft.Insights/components/', parameters('siteName'), '-Insightsprod')).InstrumentationKey]"
+                    }
+                },
+                {
+                    "name": "slotconfignames",
+                    "type": "config",
+                    "apiVersion": "2014-11-01",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Web/sites', parameters('siteName'))]"
+                    ],
+                    "properties": {
+                        "connectionStringNames": [
+                            "DefaultConnectionString"
+                        ],
+                        "appSettingNames": [
+                            "keys:ApplicationInsights:InstrumentationKey"
+                        ]
+                    }
+                },
+                {
+                    "name": "dev",
+                    "type": "slots",
+                    "location": "[resourceGroup().location]",
+                    "apiVersion": "2014-11-01",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Web/sites', parameters('siteName'))]"
+                    ],
+                    "properties": {},
+                    "resources": [
+                        {
+                            "name": "connectionstrings",
+                            "type": "config",
+                            "apiVersion": "2014-11-01",
+                            "dependsOn": [
+                                "[resourceId('Microsoft.Web/sites/slots', parameters('siteName'), 'dev')]"
+                            ],
+                            "properties": {
+                                "DefaultConnectionString": {
+                                    "value": "[concat('Data Source=tcp:', reference(concat('Microsoft.DBforMySQL/servers/',parameters('serverName'),'-dev')).fullyQualifiedDomainName, ',1433;Initial Catalog=', variables('dbname'), ';User Id=', parameters ('administratorLogin'), '@', parameters('serverName'),'-dev', ';Password=', parameters('administratorLoginPassword'), ';')]",
+                                    "type": "MySql"
+                                }
+                            }
+                        },
+                        {
+                            "name": "appsettings",
+                            "type": "config",
+                            "apiVersion": "2014-11-01",
+                            "dependsOn": [
+                                "[resourceId('Microsoft.Web/sites/slots', parameters('siteName'), 'Dev')]"
+                            ],
+                            "properties": {
+                                "Keys:ApplicationInsights:InstrumentationKey": "[reference(concat('Microsoft.Insights/components/', parameters('siteName'), '-Insightsdev')).InstrumentationKey]"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Staging",
+                    "type": "slots",
+                    "location": "[resourceGroup().location]",
+                    "apiVersion": "2014-11-01",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Web/sites', parameters('siteName'))]"
+                    ],
+                    "properties": {},
+                    "resources": [
+                        {
+                            "name": "connectionstrings",
+                            "type": "config",
+                            "apiVersion": "2014-11-01",
+                            "dependsOn": [
+                                "[resourceId('Microsoft.Web/sites/slots', parameters('siteName'), 'Staging')]"
+                            ],
+                            "properties": {
+                                "DefaultConnectionString": {
+                                    "value": "[concat('Data Source=tcp:', reference(concat('Microsoft.DBforMySQL/servers/',parameters('serverName'),'-dev')).fullyQualifiedDomainName, ',1433;Initial Catalog=', variables('dbname'), ';User Id=', parameters ('administratorLogin'), '@', parameters('serverName'),'-staging', ';Password=', parameters('administratorLoginPassword'), ';')]",
+                                    "type": "MySql"
+                                }
+                            }
+                        },
+                        {
+                            "name": "appsettings",
+                            "type": "config",
+                            "apiVersion": "2014-11-01",
+                            "dependsOn": [
+                                "[resourceId('Microsoft.Web/sites/slots', parameters('siteName'), 'Staging')]"
+                            ],
+                            "properties": {
+                                "Keys:ApplicationInsights:InstrumentationKey": "[reference(concat('Microsoft.Insights/components/', parameters('siteName'), '-Insightsstaging')).InstrumentationKey]"
+                            }
+                        }
+                    ]
                 }
             ]
         },
