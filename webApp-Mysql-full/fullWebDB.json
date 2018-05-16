@@ -51,10 +51,60 @@
       "staging",
       "prod"
     ],
-    "dbname" : "[concat(parameters('siteName'), 'database')]"
+    "dbname" : "[concat(parameters('siteName'), 'database')]",
+    "hostingPlanName": "[concat(parameters('siteName'), 'serviceplan')]"
   },
   "resources": [
       {
+        "hostingPlanName": "[concat(parameters('siteName'), 'serviceplan')]"
+        {
+            "apiVersion": "2016-09-01",
+            "name": "[variables('hostingPlanName')]",
+            "type": "Microsoft.Web/serverfarms",
+            "location": "[parameters('location')]",
+            "properties": {
+                "name": "[variables('hostingPlanName')]",
+                "workerSizeId": "1",
+                "reserved": true,
+                "numberOfWorkers": 0,
+                "hostingEnvironment": ""
+            },
+            "sku": {
+                "Tier": "Standard",
+                "Name": "S1"
+            }
+            },
+            {
+            "apiVersion": "2016-08-01",
+            "name": "[parameters('siteName')]",
+            "type": "Microsoft.Web/sites",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[concat('Microsoft.Web/serverfarms/', variables('hostingPlanName'))]"
+            ],
+            "properties": {
+                "name": "[parameters('siteName')]",
+                "serverFarmId": "[variables('hostingPlanName')]",
+                "hostingEnvironment": ""
+            },
+            "resources": [
+                {
+                "apiVersion": "2016-08-01",
+                "name": "connectionstrings",
+                "type": "config",
+                "dependsOn": [
+                    "[concat('Microsoft.Web/sites/', parameters('siteName'))]"
+                ],
+                "properties": {
+                    "defaultConnection": {
+                    "value": "[concat('Database=', variables('dbname'), ';Data Source=', parameters('serverName'), '.mysql.database.azure.com;User Id=', parameters('administratorLogin'),'@', parameters('serverName'),';Password=', parameters('administratorLoginPassword'))]",
+                    "type": "MySql"
+                    }
+                }
+                }
+            ]
+            },
+        {
           "apiVersion": "2017-12-01",
           "kind": "",
           "location": "[parameters('location')]",
