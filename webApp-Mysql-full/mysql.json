@@ -1,0 +1,100 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2014-04-01-preview/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+      "siteName": {
+        "type": "string",
+        "metadata": {
+          "description": "Name of azure web app"
+        }
+      },
+      "administratorLogin": {
+          "type": "string"
+      },
+      "administratorLoginPassword": {
+          "type": "securestring"
+      },
+      "location": {
+          "type": "string"
+      },
+      "serverName": {
+          "type": "string"
+      },
+      "skuCapacity": {
+          "type": "int"
+      },
+      "skuFamily": {
+          "type": "string"
+      },
+      "skuName": {
+          "type": "string"
+      },
+      "skuSizeMB": {
+          "type": "int"
+      },
+      "skuTier": {
+          "type": "string"
+      },
+      "version": {
+          "type": "string"
+      },
+      "backupRetentionDays": {
+          "type": "int"
+      },
+      "geoRedundantBackup": {
+          "type": "string"
+      }
+  },
+  "variables": {
+    "env" : [
+      "dev",
+      "staging",
+      "prod"
+    ],
+    "dbname" : "[concat(parameters('siteName'), 'database')]"
+  },
+  "resources": [
+      {
+          "apiVersion": "2017-12-01",
+          "kind": "",
+          "location": "[parameters('location')]",
+          "name": "[concat(parameters('serverName'),'-',variables('env')[copyIndex('mysqlcopy')])]",
+          "properties": {
+              "version": "[parameters('version')]",
+              "administratorLogin": "[parameters('administratorLogin')]",
+              "administratorLoginPassword": "[parameters('administratorLoginPassword')]",
+              "storageProfile": {
+                  "storageMB": "[parameters('skuSizeMB')]",
+                  "backupRetentionDays": "[parameters('backupRetentionDays')]",
+                  "geoRedundantBackup": "[parameters('geoRedundantBackup')]"
+              }
+          },
+          "sku": {
+              "name": "[parameters('skuName')]",
+              "tier": "[parameters('skuTier')]",
+              "capacity": "[parameters('skuCapacity')]",
+              "size": "[parameters('skuSizeMB')]",
+              "family": "[parameters('skuFamily')]"
+          },
+          "type": "Microsoft.DBforMySQL/servers",
+          "copy" : {
+              "name" : "mysqlcopy",
+              "count" : "[length(variables('env'))]"
+          },
+          "resources": [
+            {
+              "name": "[variables('dbname')]",
+              "type": "databases",
+              "apiVersion": "2017-12-01",
+              "properties": {
+                "charset": "utf8",
+                "collation": "utf8_general_ci"
+              },
+              "dependsOn": [
+                "[concat('Microsoft.DBforMySQL/servers/', parameters('serverName'),'-',variables('env')[copyIndex('mysqlcopy')])]"
+              ]
+            }
+          ]
+      }
+  ]
+}
